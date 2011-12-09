@@ -15,6 +15,14 @@ var tnetstrings = require('./tnetstrings'),
     assert.deepEqual( tnetstrings.dump(test[1]), test[0] );
 });
 
+
+// test escaping unicode characters as JSON strings
+function roundTrip(data, opt) {
+    return tnetstrings.parse(tnetstrings.dump(data, opt), opt).value;
+}
+
 assert.throws(function () { tnetstrings.dump('\u9999'); });
+assert.doesNotThrow(function () { tnetstrings.dump('\u9999', {stringsAreJSON: true}); });
+assert.equal('\u9999', roundTrip('\u9999', {stringsAreJSON: true}));
 
 console.log('tests done');

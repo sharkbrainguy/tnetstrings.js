@@ -22,7 +22,6 @@ var tnetstrings = {
         return {payload: payload, type: type, extra: extra};
     },
 
-
     parseList: function(data) {
         if (!data) {
             return [];
@@ -86,9 +85,10 @@ var tnetstrings = {
         return payload.length + ':' + payload + type;
     },
 
-    parse: function(data) {
+    parse: function(data, opts) {
         var value;
         var p = this.parsePayload(data);
+        opts = opts || {};
         switch (p.type) {
         case '#':
             value = parseInt(p.payload, 10);
@@ -105,7 +105,8 @@ var tnetstrings = {
             value = null;
             break;
         case ',':
-            value = p.payload;
+            var useJSON = this.stringsAreJSON || opts.stringsAreJSON;
+            value = useJSON ? JSON.parse(p.payload) : p.payload;
             break;
         case '}':
             value = this.parseDict(p.payload);
@@ -119,7 +120,8 @@ var tnetstrings = {
         return {value: value, extra: p.extra};
     },
 
-    dump: function(data) {
+    dump: function(data, opts) {
+        opts = opts || {};
         switch (typeof data) {
         case 'number':
             // return null for infinite numbers
@@ -130,14 +132,22 @@ var tnetstrings = {
         case 'boolean':
             var out = data.toString();
             return out.length + ':' + out + '!';
+
         case 'string':
+            var useJSON = this.stringsAreJSON || opts.stringsAreJSON;
+            data = useJSON ? this.escapeStringAsJSON(data) : data;
+
             this.assertStringIsSafe(data);
+
             return data.length + ':' + data + ',';
+
         case 'object':
             // object in js could be dict, list, null
             return this.dumpObject(data);
         }
     },
+
+    stringsAreJSON: false,
 
     assertStringIsSafe: function (str) {
         var i = str.length;
@@ -146,6 +156,26 @@ var tnetstrings = {
             if (str.charCodeAt(i) > 127)
                 throw new Error('String is not safe to encode as a bytestring: ' + data);
         }
+
+        return true;
+    },
+
+    escapeStringAsJSON: function (str) {
+        str = JSON.stringify( String(str) );
+
+        var ch, i, result = '';
+
+        for (i = 1; i < str.length - 1; i++) {
+            ch = str.charCodeAt(i);  
+
+            if (ch < 128) {
+                result += str.charAt(i);
+            } else {
+                result += '\\u' + ch.toString(16);
+            }
+        }
+
+        return '"' + result + '"';
     }
 };
 
